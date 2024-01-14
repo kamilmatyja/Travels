@@ -23,7 +23,9 @@ namespace Travels
             schedules.SetNextSchedule("Szczecin", "05.01.2024", new Train("BieszczadyExpress", 2, 10));
             schedules.SetNextSchedule("Szczecin", "30.01.2024", new Train("PodlasieSprinter", 4, 10));
 
-            new View(schedules.GetAllSchedules());
+            View view = new View();
+            view.Schedule = schedules;
+            view.ShowInitialize();
         }
     }
 }

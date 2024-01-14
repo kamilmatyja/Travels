@@ -1,23 +1,22 @@
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 
 namespace Travels
 {
     public class View
     {
-        private List<ScheduleEntry> Schedules { get; set; }
+        public Schedule Schedule { get; set; }
+        private string CurrentDestination { get; set; }
+        private string CurrentDeparture { get; set; }
+        private Train CurrentTrain { get; set; }
 
-        public View(List<ScheduleEntry> schedules)
+        public void ShowInitialize()
         {
-            Schedules = schedules;
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.BackgroundColor = ConsoleColor.DarkBlue;
 
             while (true)
             {
-                ShowState();
-
-                switch (GetReadLine(1, 6))
+                switch (ShowState())
                 {
                     case 1:
                         ShowReserveASeat();
@@ -40,25 +39,37 @@ namespace Travels
             }
         }
 
-        private void ShowState()
+        private uint ShowState()
         {
-            Console.Clear();
-
-            Console.WriteLine("=== MENU ===");
-            Console.WriteLine("1. Zarezerwuj miejsce");
-            Console.WriteLine("2. Zarezerwuj kilka miejsc");
-            Console.WriteLine("3. Sprawdź dostępność miejsc");
-            Console.WriteLine("4. Anuluj rezerwację");
-            Console.WriteLine("5. Run Tests");
-            Console.WriteLine("6. Zakończ program");
-            Console.Write("Wybierz opcję (1-6): ");
+            SetHeader("MENU");
+            SetWriteLine("1. Zarezerwuj miejsce");
+            SetWriteLine("2. Zarezerwuj kilka miejsc");
+            SetWriteLine("3. Sprawdź dostępność miejsc");
+            SetWriteLine("4. Anuluj rezerwację");
+            SetWriteLine("5. Run Tests");
+            SetWriteLine("6. Zakończ program");
+            return GetReadLine("Wybierz opcję", 1, 6);
         }
 
-        private void ShowTrainCar(Train train)
+        private void ShowTimetable()
         {
-            Console.Clear();
+            string[] uniqueDestinations = Schedule.GetUniqueDestinations();
+            uint destination = GetTrainDestination(uniqueDestinations);
+            CurrentDestination = uniqueDestinations[destination];
 
-            Console.WriteLine("=== UKŁAD POCIĄGU ===");
+            string[] uniqueDepartures = Schedule.GetUniqueDepartures(CurrentDestination);
+            uint departure = GetTrainDeparture(uniqueDepartures);
+            CurrentDeparture = uniqueDepartures[departure];
+
+            CurrentTrain = Schedule.GetTrainForDestinationAndDeparture(CurrentDestination, CurrentDeparture);
+
+            ShowTrainCar(CurrentDestination, CurrentDeparture, CurrentTrain);
+        }
+
+        private void ShowTrainCar(string destination, string departure, Train train)
+        {
+            SetHeader("UKŁAD POCIĄGU");
+            SetWriteLine($"Pociąg: {train.TrainName}, miejsce docelowe: {destination}, data odjazdu: {departure}.");
 
             Console.Write("   ");
             for (uint column = 0; column < train.TrainColumns; column++)
@@ -66,7 +77,7 @@ namespace Travels
                 Console.Write($"{column + 1:D2} ");
             }
 
-            Console.WriteLine();
+            SetWriteLine("");
 
             for (uint row = 0; row < train.TrainRows; row++)
             {
@@ -76,152 +87,124 @@ namespace Travels
                     Console.Write($" {train.GetSeatReservation(column, row)} ");
                 }
 
-                Console.WriteLine();
+                SetWriteLine("");
             }
         }
 
         private void ShowTrainDestinations(string[] uniqueDestinations)
         {
-            Console.Clear();
-
-            Console.WriteLine("=== MIEJSCA DOCELOWE ===");
+            SetHeader("MIEJSCA DOCELOWE");
             for (uint destination = 0; destination < uniqueDestinations.Length; destination++)
             {
-                Console.WriteLine($"{destination + 1}. {uniqueDestinations[destination]}");
+                SetWriteLine($"{destination + 1}. {uniqueDestinations[destination]}");
             }
         }
 
         private void ShowTrainDepartures(string[] uniqueDepartures)
         {
-            Console.Clear();
-
-            Console.WriteLine("=== DATY ODJAZDÓW ===");
+            SetHeader("DATY ODJAZDÓW");
             for (uint departure = 0; departure < uniqueDepartures.Length; departure++)
             {
-                Console.WriteLine($"{departure + 1}. {uniqueDepartures[departure]}");
+                SetWriteLine($"{departure + 1}. {uniqueDepartures[departure]}");
             }
         }
 
         private void ShowReserveASeat()
         {
-            string[] uniqueDestinations = GetUniqueDestinations();
-            uint destination = GetTrainDestination(uniqueDestinations);
-            string[] uniqueDepartures = GetUniqueDepartures(uniqueDestinations[destination]);
-            uint departure = GetTrainDeparture(uniqueDepartures);
+            ShowTimetable();
 
-            Train train = GetTrainForDestinationAndDeparture(uniqueDestinations[destination],
-                uniqueDepartures[departure]);
+            uint column = GetTrainColumn(CurrentTrain);
+            uint row = GetTrainRow(CurrentTrain);
 
-            ShowTrainCar(train);
-
-            uint column = GetTrainColumn(train);
-            uint row = GetTrainRow(train);
-
-            while (!train.ReserveASeat(column, row))
+            while (!CurrentTrain.ReserveASeat(column, row))
             {
-                Console.WriteLine(
-                    $"Miejsce w kolumnie {column + 1} rzędzie {row + 1} jest już zajęte, wybierz inne miejsce.");
+                SetWriteLine(
+                    $"Miejsce w kolumnie {column + 1}, rzędzie {row + 1} jest już zajęte, wybierz inne miejsce.");
 
-                column = GetTrainColumn(train);
-                row = GetTrainRow(train);
+                column = GetTrainColumn(CurrentTrain);
+                row = GetTrainRow(CurrentTrain);
             }
 
-            Console.WriteLine($"Miejsce w kolumnie {column + 1} rzędzie {row + 1} zostało zarezerwowane pomyślnie.");
+            ShowTrainCar(CurrentDestination, CurrentDeparture, CurrentTrain);
+
+            SetWriteLine($"Miejsce w kolumnie {column + 1}, rzędzie {row + 1} zostało zarezerwowane pomyślnie.");
 
             WaitForReady();
         }
 
-        private void ShowReserveSeats()
+        protected void ShowReserveSeats()
         {
-            string[] uniqueDestinations = GetUniqueDestinations();
-            uint destination = GetTrainDestination(uniqueDestinations);
-            string[] uniqueDepartures = GetUniqueDepartures(uniqueDestinations[destination]);
-            uint departure = GetTrainDeparture(uniqueDepartures);
+            ShowTimetable();
 
-            Train train = GetTrainForDestinationAndDeparture(uniqueDestinations[destination],
-                uniqueDepartures[departure]);
-
-            ShowTrainCar(train);
-
-            uint countReservationSeats = GetSumOfReservationSeats(train);
+            uint countReservationSeats = GetSumOfReservationSeats(CurrentTrain);
             uint[] columns = new uint[countReservationSeats];
             uint[] rows = new uint[countReservationSeats];
 
             for (uint seat = 0; seat < countReservationSeats; seat++)
             {
-                Console.WriteLine($"Miejsce {seat + 1}: ");
+                SetWriteLine($"Miejsce {seat + 1}: ");
 
-                columns[seat] = GetTrainColumn(train);
-                rows[seat] = GetTrainRow(train);
+                columns[seat] = GetTrainColumn(CurrentTrain);
+                rows[seat] = GetTrainRow(CurrentTrain);
             }
 
-            while (!train.ReserveSeats(columns, rows))
+            while (!CurrentTrain.ReserveSeats(columns, rows))
             {
-                Console.WriteLine("Przynajmniej jedno z wybranych miejsc jest już zajęte, wybierz inne miejsca.");
+                SetWriteLine("Przynajmniej jedno z wybranych miejsc jest już zajęte, wybierz inne miejsca.");
 
                 for (uint seat = 0; seat < countReservationSeats; seat++)
                 {
-                    Console.WriteLine($"Miejsce {seat + 1}: ");
+                    SetWriteLine($"Miejsce {seat + 1}: ");
 
-                    columns[seat] = GetTrainColumn(train);
-                    rows[seat] = GetTrainRow(train);
+                    columns[seat] = GetTrainColumn(CurrentTrain);
+                    rows[seat] = GetTrainRow(CurrentTrain);
                 }
             }
 
-            Console.WriteLine("Wszystkie miejsca zarezerwowane pomyślnie.");
+            ShowTrainCar(CurrentDestination, CurrentDeparture, CurrentTrain);
+
+            SetWriteLine("Wszystkie miejsca zarezerwowane pomyślnie.");
 
             WaitForReady();
         }
 
         private void ShowTrainTimetable()
         {
-            string[] uniqueDestinations = GetUniqueDestinations();
-            uint destination = GetTrainDestination(uniqueDestinations);
-            string[] uniqueDepartures = GetUniqueDepartures(uniqueDestinations[destination]);
-            uint departure = GetTrainDeparture(uniqueDepartures);
-
-            Train train = GetTrainForDestinationAndDeparture(uniqueDestinations[destination],
-                uniqueDepartures[departure]);
-
-            ShowTrainCar(train);
+            ShowTimetable();
 
             WaitForReady();
         }
 
-        private void ShowCancelReserveSeat()
+        protected void ShowCancelReserveSeat()
         {
-            string[] uniqueDestinations = GetUniqueDestinations();
-            uint destination = GetTrainDestination(uniqueDestinations);
-            string[] uniqueDepartures = GetUniqueDepartures(uniqueDestinations[destination]);
-            uint departure = GetTrainDeparture(uniqueDepartures);
+            ShowTimetable();
 
-            Train train = GetTrainForDestinationAndDeparture(uniqueDestinations[destination],
-                uniqueDepartures[departure]);
+            uint column = GetTrainColumn(CurrentTrain);
+            uint row = GetTrainRow(CurrentTrain);
 
-            ShowTrainCar(train);
-
-            uint column = GetTrainColumn(train);
-            uint row = GetTrainRow(train);
-
-            while (!train.CancelReserveSeat(column, row))
+            while (!CurrentTrain.CancelReserveSeat(column, row))
             {
-                Console.WriteLine(
-                    $"Miejsce w kolumnie {column + 1} rzędzie {row + 1} jest wolne, wybierz zarezerwowane miejsce.");
+                SetWriteLine(
+                    $"Miejsce w kolumnie {column + 1}, rzędzie {row + 1} jest wolne, wybierz zarezerwowane miejsce.");
 
-                column = GetTrainColumn(train);
-                row = GetTrainRow(train);
+                column = GetTrainColumn(CurrentTrain);
+                row = GetTrainRow(CurrentTrain);
             }
 
-            Console.WriteLine(
-                $"Miejsce w kolumnie {column + 1} rzędzie {row + 1} zostało zwolnione z rezerwacji pomyślnie.");
+            ShowTrainCar(CurrentDestination, CurrentDeparture, CurrentTrain);
+
+            SetWriteLine(
+                $"Miejsce w kolumnie {column + 1}, rzędzie {row + 1} zostało zwolnione z rezerwacji pomyślnie.");
 
             WaitForReady();
         }
 
-        private static uint GetReadLine(uint min, uint max)
+        protected virtual uint GetReadLine(string text, uint min, uint max)
         {
             uint userInput;
             bool isValidInput;
+
+            Console.Write($"{text} ({min}-{max}): ");
 
             do
             {
@@ -238,69 +221,54 @@ namespace Travels
             return userInput;
         }
 
-        private void WaitForReady()
+        protected void WaitForReady()
         {
             Console.Write("Naciśnij dowolny klawisz, aby kontynuować: ");
             Console.ReadKey();
         }
 
+        protected virtual void Clear()
+        {
+            Console.Clear();
+        }
+
+        protected void SetWriteLine(string text)
+        {
+            Console.WriteLine(text);
+        }
+
+        private void SetHeader(string text)
+        {
+            Clear();
+
+            SetWriteLine($"=== {text} ===");
+        }
+
         private uint GetTrainDestination(string[] uniqueDestinations)
         {
             ShowTrainDestinations(uniqueDestinations);
-            Console.Write($"Wybierz miejsce docelowe (1-{uniqueDestinations.Length}): ");
-            return GetReadLine(1, (uint)uniqueDestinations.Length) - 1;
+            return GetReadLine("Wybierz miejsce docelowe", 1, (uint)uniqueDestinations.Length) - 1;
         }
 
         private uint GetTrainDeparture(string[] uniqueDepartures)
         {
             ShowTrainDepartures(uniqueDepartures);
-            Console.Write($"Wybierz datę pociągu (1-{uniqueDepartures.Length}): ");
-            return GetReadLine(1, (uint)uniqueDepartures.Length) - 1;
+            return GetReadLine("Wybierz datę pociągu", 1, (uint)uniqueDepartures.Length) - 1;
         }
 
         private uint GetTrainColumn(Train train)
         {
-            Console.Write($"Podaj numer kolumny (1-{train.TrainColumns}): ");
-            return GetReadLine(1, train.TrainColumns) - 1;
+            return GetReadLine("Podaj numer kolumny", 1, train.TrainColumns) - 1;
         }
 
         private uint GetTrainRow(Train train)
         {
-            Console.Write($"Podaj numer rzędu (1-{train.TrainRows}): ");
-            return GetReadLine(1, train.TrainRows) - 1;
+            return GetReadLine("Podaj numer rzędu", 1, train.TrainRows) - 1;
         }
 
         private uint GetSumOfReservationSeats(Train train)
         {
-            Console.Write("Podaj liczbę miejsc do zarezerwowania: ");
-            return GetReadLine(1, train.TotalFreeSeats());
-        }
-
-        private string[] GetUniqueDestinations()
-        {
-            return Schedules
-                .Select(entry => entry.Destination)
-                .Distinct()
-                .OrderBy(destination => destination)
-                .ToArray();
-        }
-
-        private string[] GetUniqueDepartures(string destination)
-        {
-            return Schedules
-                .Where(entry => entry.Destination == destination)
-                .Select(entry => entry.Departure)
-                .Distinct()
-                .OrderBy(departureDate => DateTime.ParseExact(departureDate, "dd.MM.yyyy", CultureInfo.InvariantCulture))
-                .ToArray();
-        }
-
-        private Train GetTrainForDestinationAndDeparture(string destination, string departure)
-        {
-            ScheduleEntry entry =
-                Schedules.FirstOrDefault(e => e.Destination == destination && e.Departure == departure);
-
-            return entry?.Train;
+            return GetReadLine("Podaj liczbę miejsc do zarezerwowania", 1, train.TotalFreeSeats());
         }
     }
 }

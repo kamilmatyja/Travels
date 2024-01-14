@@ -6,12 +6,15 @@ namespace Travels
     {
         public Test()
         {
-            Clear();
+            Console.Clear();
 
             Schedule = new Schedule();
             Schedule.SetNextSchedule("Poznań", "10.01.2024", new Train("InterCityPolska", 2, 5));
 
             TestReserveSeats(this);
+
+            Console.Clear();
+
             TestCancelReserveSeat(this);
         }
 

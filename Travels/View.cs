@@ -221,13 +221,13 @@ namespace Travels
             return userInput;
         }
 
-        protected void WaitForReady()
+        private void WaitForReady()
         {
             Console.Write("Naciśnij dowolny klawisz, aby kontynuować: ");
             Console.ReadKey();
         }
 
-        protected virtual void Clear()
+        public virtual void Clear()
         {
             Console.Clear();
         }
